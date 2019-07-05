@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>io.y2k.kotlinml</id>
-    <name>Kotlin ML</name>
+    <name>Kotlin ML folding</name>
     <vendor email="y2k@email.com" url="https://www.y2k.io">y2k</vendor>
 
     <description><![CDATA[
@@ -10,5 +10,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <lang.foldingBuilder language="kotlin" implementationClass="io.y2k.kotlinml.KotlinMLFolding"/>
     </extensions>
+
+    <depends>org.jetbrains.kotlin</depends>
 
 </idea-plugin>

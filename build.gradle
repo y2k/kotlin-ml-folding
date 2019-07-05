@@ -14,7 +14,7 @@ plugins {
 apply plugin: 'kotlin'
 
 group 'io.y2k'
-version '0.2'
+version '0.3'
 
 intellij {
     version '2019.1.3'
