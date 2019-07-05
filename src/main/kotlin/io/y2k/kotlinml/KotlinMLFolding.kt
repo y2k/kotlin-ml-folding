@@ -8,11 +8,15 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
-import org.jetbrains.annotations.NotNull
 
 class KotlinMLFolding : FoldingBuilderEx() {
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> =
+        listOf(")", "}")
+            .flatMap { mkBraceFoldings(root, it) }
+            .toTypedArray()
+
+    private fun mkBraceFoldings(root: PsiElement, braceText: String): List<FoldingDescriptor> =
         PsiTreeUtil
             .findChildrenOfType(root, LeafPsiElement::class.java)
             .map {
@@ -21,15 +25,15 @@ class KotlinMLFolding : FoldingBuilderEx() {
                     val prev = it.prevSibling
                 }
             }
-            .filter { it.item.text == "}" && it.prev.text?.startsWith("\n") ?: false }
+            .filter { it.item.text == braceText && it.prev?.text?.startsWith("\n") ?: false }
             .map {
-                FoldingDescriptor(
+                object : FoldingDescriptor(
                     it.item.node,
-                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset))
+                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset)) {
+                    override fun getPlaceholderText() = " $braceText"
+                }
             }
-            .toTypedArray()
 
-    override fun getPlaceholderText(@NotNull node: ASTNode): String = " }"
-
-    override fun isCollapsedByDefault(@NotNull node: ASTNode): Boolean = true
+    override fun isCollapsedByDefault(node: ASTNode): Boolean = true
+    override fun getPlaceholderText(node: ASTNode): String? = null
 }
