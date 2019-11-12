@@ -10,14 +10,38 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.psiUtil.nextLeafs
 
 class KotlinMLFolding : FoldingBuilderEx() {
 
-    override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> =
-        listOf(")", "}")
-            .flatMap { mkBraceFoldings(root, it) }
-            .plus(mkLetFoldings(root))
-            .toTypedArray()
+    override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean) =
+        listOf(
+            mkBraceFoldings(root, ")"),
+            mkBraceFoldings(root, "}"),
+            mkLetFoldings(root)
+        ).flatten().toTypedArray()
+
+    private fun mkBraceFoldings(root: PsiElement, braceText: String): List<FoldingDescriptor> =
+        PsiTreeUtil
+            .findChildrenOfType(root, LeafPsiElement::class.java)
+            .map {
+                object {
+                    val item = it
+                    val prev = it.prevSibling
+                }
+            }
+            .filter {
+                it.item.text == braceText
+                    && it.prev?.text?.startsWith("\n") ?: false
+                    && it.item.nextLeafs.firstOrNull()?.text?.startsWith("\n") ?: false
+            }
+            .map {
+                object : FoldingDescriptor(
+                    it.item.node,
+                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset)) {
+                    override fun getPlaceholderText() = " $braceText"
+                }
+            }
 
     private fun mkLetFoldings(root: PsiElement): List<FoldingDescriptor> =
         PsiTreeUtil
@@ -58,24 +82,6 @@ class KotlinMLFolding : FoldingBuilderEx() {
             group) {
             override fun getPlaceholderText() = "|> "
         }
-
-    private fun mkBraceFoldings(root: PsiElement, braceText: String): List<FoldingDescriptor> =
-        PsiTreeUtil
-            .findChildrenOfType(root, LeafPsiElement::class.java)
-            .map {
-                object {
-                    val item = it
-                    val prev = it.prevSibling
-                }
-            }
-            .filter { it.item.text == braceText && it.prev?.text?.startsWith("\n") ?: false }
-            .map {
-                object : FoldingDescriptor(
-                    it.item.node,
-                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset)) {
-                    override fun getPlaceholderText() = " $braceText"
-                }
-            }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
     override fun getPlaceholderText(node: ASTNode): String? = null
