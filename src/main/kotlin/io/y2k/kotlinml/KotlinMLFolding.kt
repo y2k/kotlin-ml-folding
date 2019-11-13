@@ -7,8 +7,10 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.psiUtil.nextLeafs
 
@@ -18,10 +20,11 @@ class KotlinMLFolding : FoldingBuilderEx() {
         listOf(
             mkBraceFoldings(root, ")"),
             mkBraceFoldings(root, "}"),
+            mkBraceFoldingsForElse(root),
             mkLetFoldings(root)
         ).flatten().toTypedArray()
 
-    private fun mkBraceFoldings(root: PsiElement, braceText: String): List<FoldingDescriptor> =
+    private fun mkBraceFoldings(root: PsiElement, braceText: String) =
         PsiTreeUtil
             .findChildrenOfType(root, LeafPsiElement::class.java)
             .map {
@@ -43,7 +46,42 @@ class KotlinMLFolding : FoldingBuilderEx() {
                 }
             }
 
-    private fun mkLetFoldings(root: PsiElement): List<FoldingDescriptor> =
+    private fun mkBraceFoldingsForElse(root: PsiElement) = run {
+        fun filter(item: LeafPsiElement) = run {
+            val actual = item.nextLeafs.take(2).toList()
+            val expected = listOf<(PsiElement) -> Boolean>(
+                { it is PsiWhiteSpace },
+                { it is LeafPsiElement && (it.elementType as? KtKeywordToken)?.value == "else" }
+            )
+
+            val count = actual.zip(expected) { e, f -> f(e) }.count { it }
+            count == expected.size
+        }
+
+        val brace = "}"
+        PsiTreeUtil
+            .findChildrenOfType(root, LeafPsiElement::class.java)
+            .map {
+                object {
+                    val item = it
+                    val prev = it.prevSibling
+                }
+            }
+            .filter {
+                it.item.text == brace
+                    && it.prev?.text?.startsWith("\n") ?: false
+                    && filter(it.item)
+            }
+            .map {
+                object : FoldingDescriptor(
+                    it.item.node,
+                    TextRange(it.item.textRange.startOffset - 2, it.item.textRange.endOffset)) {
+                    override fun getPlaceholderText() = brace
+                }
+            }
+    }
+
+    private fun mkLetFoldings(root: PsiElement) =
         PsiTreeUtil
             .findChildrenOfType(root, KtCallExpression::class.java)
             .map {
