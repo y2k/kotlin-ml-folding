@@ -39,11 +39,12 @@ class KotlinMLFolding : FoldingBuilderEx() {
                     && it.item.nextLeafs.firstOrNull()?.text?.startsWith("\n") ?: false
             }
             .map {
-                object : FoldingDescriptor(
+                FoldingDescriptor(
                     it.item.node,
-                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset)) {
-                    override fun getPlaceholderText() = " $braceText"
-                }
+                    TextRange(it.prev.textRange.startOffset, it.item.textRange.endOffset),
+                    null,
+                    " $braceText"
+                )
             }
 
     private fun mkBraceFoldingsForElse(root: PsiElement) = run {
@@ -73,11 +74,12 @@ class KotlinMLFolding : FoldingBuilderEx() {
                     && filter(it.item)
             }
             .map {
-                object : FoldingDescriptor(
+                FoldingDescriptor(
                     it.item.node,
-                    TextRange(it.item.textRange.startOffset - 2, it.item.textRange.endOffset)) {
-                    override fun getPlaceholderText() = brace
-                }
+                    TextRange(it.item.textRange.startOffset - 2, it.item.textRange.endOffset),
+                    null,
+                    brace
+                )
             }
     }
 
@@ -99,12 +101,12 @@ class KotlinMLFolding : FoldingBuilderEx() {
                         val start = mkPipeFolding(it.node, it.dot, group)
 
                         val l = it.node.lastChild.lastChild
-                        val end = object : FoldingDescriptor(
+                        val end = FoldingDescriptor(
                             it.node.node,
                             TextRange(l.textRange.startOffset, l.textRange.endOffset),
-                            group) {
-                            override fun getPlaceholderText() = ""
-                        }
+                            group,
+                            ""
+                        )
 
                         listOf(start, end)
                     }
@@ -114,12 +116,12 @@ class KotlinMLFolding : FoldingBuilderEx() {
             }
 
     private fun mkPipeFolding(node: KtCallExpression, dot: PsiElement, group: FoldingGroup? = null): FoldingDescriptor =
-        object : FoldingDescriptor(
+        FoldingDescriptor(
             node.node,
             TextRange(dot.textRange.startOffset - 4, dot.textRange.startOffset + 5),
-            group) {
-            override fun getPlaceholderText() = "|> "
-        }
+            group,
+            "|> "
+        )
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
     override fun getPlaceholderText(node: ASTNode): String? = null
